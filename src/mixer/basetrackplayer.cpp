@@ -395,7 +395,7 @@ void BaseTrackPlayerImpl::slotLoadTrack(TrackPointer pNewTrack, bool bPlay) {
     emit loadingTrack(pNewTrack, pOldTrack);
 }
 
-void BaseTrackPlayerImpl::slotLoadFailed(TrackPointer pTrack, QString reason) {
+void BaseTrackPlayerImpl::slotLoadFailed(TrackPointer pTrack, const QString& reason) {
     // Note: This slot can be a load failure from the current track or a
     // a delayed signal from a previous load.
     // We have probably received a slotTrackLoaded signal, of an old track that
@@ -595,7 +595,7 @@ void BaseTrackPlayerImpl::slotSetReplayGain(mixxx::ReplayGain replayGain) {
     }
 }
 
-void BaseTrackPlayerImpl::slotSetTrackColor(mixxx::RgbColor::optional_t color) {
+void BaseTrackPlayerImpl::slotSetTrackColor(const mixxx::RgbColor::optional_t& color) {
     m_pTrackColor->forceSet(trackColorToDouble(color));
 }
 

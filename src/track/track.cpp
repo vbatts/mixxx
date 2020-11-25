@@ -140,7 +140,7 @@ void Track::relocate(
 
 void Track::importMetadata(
         mixxx::TrackMetadata importedMetadata,
-        QDateTime metadataSynchronized) {
+        const QDateTime& metadataSynchronized) {
     // Safe some values that are needed after move assignment and unlocking(see below)
     const auto newBpm = importedMetadata.getTrackInfo().getBpm();
     const auto newKey = importedMetadata.getTrackInfo().getKey();
@@ -414,7 +414,7 @@ QDateTime Track::getDateAdded() const {
 
 void Track::setDateAdded(const QDateTime& dateAdded) {
     QMutexLocker lock(&m_qMutex);
-    return m_record.setDateAdded(dateAdded);
+    m_record.setDateAdded(dateAdded);
 }
 
 void Track::setDuration(mixxx::Duration duration) {
@@ -619,7 +619,7 @@ mixxx::RgbColor::optional_t Track::getColor() const {
     return m_record.getColor();
 }
 
-void Track::setColor(mixxx::RgbColor::optional_t color) {
+void Track::setColor(const mixxx::RgbColor::optional_t& color) {
     QMutexLocker lock(&m_qMutex);
     if (compareAndSet(m_record.ptrColor(), color)) {
         markDirtyAndUnlock(&lock);

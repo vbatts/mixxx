@@ -46,7 +46,7 @@ mixxx::Logger kLogger("TrackDAO");
 
 enum { UndefinedRecordIndex = -2 };
 
-void markTrackLocationsAsDeleted(QSqlDatabase database, const QString& directory) {
+void markTrackLocationsAsDeleted(const QSqlDatabase& database, const QString& directory) {
     //qDebug() << "TrackDAO::markTrackLocationsAsDeleted" << QThread::currentThread() << m_database.connectionName();
     QSqlQuery query(database);
     query.prepare("UPDATE track_locations "
@@ -308,13 +308,13 @@ void TrackDAO::saveTrack(Track* pTrack) const {
     }
 }
 
-void TrackDAO::slotDatabaseTracksChanged(QSet<TrackId> changedTrackIds) {
+void TrackDAO::slotDatabaseTracksChanged(const QSet<TrackId>& changedTrackIds) {
     if (!changedTrackIds.isEmpty()) {
         emit tracksChanged(changedTrackIds);
     }
 }
 
-void TrackDAO::slotDatabaseTracksRelocated(QList<RelocatedTrack> relocatedTracks) {
+void TrackDAO::slotDatabaseTracksRelocated(const QList<RelocatedTrack>& relocatedTracks) {
     QSet<TrackId> removedTrackIds;
     QSet<TrackId> changedTrackIds;
     for (const auto& relocatedTrack : qAsConst(relocatedTracks)) {
@@ -606,7 +606,7 @@ bool insertTrackLibrary(
         const mixxx::BeatsPointer& pBeats,
         DbId trackLocationId,
         const TrackFile& trackFile,
-        QDateTime trackDateAdded) {
+        const QDateTime& trackDateAdded) {
     bindTrackLibraryValues(pTrackLibraryInsert, trackRecord, pBeats);
 
     if (!trackRecord.getDateAdded().isNull()) {
@@ -2169,7 +2169,7 @@ TrackFile TrackDAO::relocateCachedTrack(
 }
 
 bool TrackDAO::updatePlayCounterFromPlayedHistory(
-        const QSet<TrackId> trackIds) const {
+        const QSet<TrackId>& trackIds) const {
     // Update both timesplay and last_played_at according to the
     // corresponding aggregated properties from the played history,
     // i.e. COUNT for the number of times a track has been played
