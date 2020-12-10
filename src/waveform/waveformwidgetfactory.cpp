@@ -734,7 +734,9 @@ void WaveformWidgetFactory::swap() {
 }
 
 WaveformWidgetType::Type WaveformWidgetFactory::autoChooseWidgetType() const {
-    //default selection
+    // OpenGL waveform performance is bad on macOS with QGLWidget and Qt 5.
+    // TODO: remove this #ifndef when upgrading to QOpenGLWidget
+#ifndef __APPLE__
     if (m_openGlAvailable) {
         if (m_openGLShaderAvailable) {
             return WaveformWidgetType::GLSLRGBWaveform;
@@ -742,7 +744,8 @@ WaveformWidgetType::Type WaveformWidgetFactory::autoChooseWidgetType() const {
             return WaveformWidgetType::GLRGBWaveform;
         }
     }
-    return WaveformWidgetType::SoftwareWaveform;
+#endif
+    return WaveformWidgetType::RGBWaveform;
 }
 
 void WaveformWidgetFactory::evaluateWidgets() {
@@ -826,6 +829,13 @@ void WaveformWidgetFactory::evaluateWidgets() {
             useOpenGles = GLSLRGBWaveformWidget::useOpenGles();
             useOpenGLShaders = GLSLRGBWaveformWidget::useOpenGLShaders();
             developerOnly = GLSLRGBWaveformWidget::developerOnly();
+            break;
+        case WaveformWidgetType::GLSLRGBStackedWaveform:
+            widgetName = GLSLRGBStackedWaveformWidget::getWaveformWidgetName();
+            useOpenGl = GLSLRGBStackedWaveformWidget::useOpenGl();
+            useOpenGles = GLSLRGBStackedWaveformWidget::useOpenGles();
+            useOpenGLShaders = GLSLRGBStackedWaveformWidget::useOpenGLShaders();
+            developerOnly = GLSLRGBStackedWaveformWidget::developerOnly();
             break;
         case WaveformWidgetType::GLVSyncTest:
             widgetName = GLVSyncTestWidget::getWaveformWidgetName();
@@ -952,6 +962,9 @@ WaveformWidgetAbstract* WaveformWidgetFactory::createWaveformWidget(
             break;
         case WaveformWidgetType::GLSLRGBWaveform:
             widget = new GLSLRGBWaveformWidget(viewer->getGroup(), viewer);
+            break;
+        case WaveformWidgetType::GLSLRGBStackedWaveform:
+            widget = new GLSLRGBStackedWaveformWidget(viewer->getGroup(), viewer);
             break;
         case WaveformWidgetType::GLVSyncTest:
             widget = new GLVSyncTestWidget(viewer->getGroup(), viewer);
