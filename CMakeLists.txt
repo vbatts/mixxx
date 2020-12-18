@@ -83,8 +83,17 @@ endif()
 #
 set(OPTIMIZE "portable" CACHE STRING "Optimization and Tuning (set to off, portable, native, legacy, fastbuild)")
 message(STATUS "Optimization level: ${OPTIMIZE}")
-if(NOT OPTIMIZE STREQUAL "off")
-  if(MSVC)
+
+if(MSVC)
+  # Microsoft Visual Studio Compiler
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    # Target architecture is x64 -> x64 has alsways SSE and SSE2 instruction sets
+    message(STATUS "x64 Enabling SS2 CPU optimizations (>= Pentium 4)")
+    # Define gcc/clang style defines for SSE and SSE2 for compatibility
+    add_compile_definitions("__SSE__" "__SSE2__")
+  endif()
+
+  if(NOT OPTIMIZE STREQUAL "off")
     # Use the fastest floating point math library
     # http://msdn.microsoft.com/en-us/library/e7s85ffb.aspx
     # http://msdn.microsoft.com/en-us/library/ms235601.aspx
@@ -96,10 +105,6 @@ if(NOT OPTIMIZE STREQUAL "off")
     # http://msdn.microsoft.com/en-us/library/bxwfs976.aspx
     add_compile_options(/Gy)
     add_link_options(/OPT:REF /OPT:ICF)
-
-    # Don't worry about aligning code on 4KB boundaries
-    # ALBERT: NOWIN98 is not supported in MSVC 2010.
-    #add_link_options(mixxx-lib PUBLIC "/OPT:NOWIN98")
 
     # http://msdn.microsoft.com/en-us/library/59a3b321.aspx
     # In general, you should pick /O2 over /Ox
@@ -130,22 +135,39 @@ if(NOT OPTIMIZE STREQUAL "off")
     endif()
 
     if(OPTIMIZE STREQUAL "portable" OR OPTIMIZE STREQUAL "fastbuild")
-      message(STATUS "Enabling SS2 CPU optimizations (>= Pentium 4)")
-      # SSE and SSE2 are core instructions on x64
-      # and consequently raise a warning message from compiler with this flag on x64.
       if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+        # Target architecture is x86 with SSE and SSE2
+        message(STATUS "x86 Enabling SS2 CPU optimizations (>= Pentium 4)")
+        # Define gcc/clang style defines for SSE and SSE2 for compatibility
+        add_compile_definitions("__SSE__" "__SSE2__")
+        # Set compiler option for SSE/SSE2
         add_compile_options(/arch:SSE2)
       endif()
-      add_compile_definitions("__SSE__" "__SSE2__")
     elseif(OPTIMIZE STREQUAL "native")
-      message("Enabling native optimizations for ${CMAKE_SYSTEM_PROCESSOR}")
+      message("Enabling optimizations for native system, specified by user")
+      if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+        # Target architecture is x86 with SSE and SSE2
+        message(STATUS "x86 Enabling SS2 CPU optimizations (>= Pentium 4)")
+        # Define gcc/clang style defines for SSE and SSE2 for compatibility
+        add_compile_definitions("__SSE__" "__SSE2__")
+      endif()
+        # Define the target processor instruction and other compiler optimization flags here:
+        # https://docs.microsoft.com/en-us/cpp/build/reference/arch-x64?view=msvc-160
+        # add_compile_options(/arch:AVX512)
+        message(FATAL_ERROR "User need to set the MSVC compiler flags for the native processor here!")
       add_compile_options("/favor:${CMAKE_SYSTEM_PROCESSOR}")
     elseif(OPTIMIZE STREQUAL "legacy")
-      message("Enabling pure i386 code")
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+      message("Enabling pure x64 instruction set (without AVX etc.)")
+    else()
+      message("Enabling pure i386 instruction set (without SSE/SSE2 etc.)")
+    endif()
     else()
       message(FATAL_ERROR "Invalid value passed to OPTIMIZE option: ${OPTIMIZE}")
     endif()
-  elseif(GNU_GCC OR LLVM_CLANG)
+  endif()
+elseif(GNU_GCC OR LLVM_CLANG)
+  if(NOT OPTIMIZE STREQUAL "off")
     # Common flags to all optimizations.
     # -ffast-math will prevent a performance penalty by denormals
     # (floating point values almost Zero are treated as Zero)
@@ -334,6 +356,8 @@ configure_file(
 if(CMAKE_VERSION VERSION_LESS "3.7.0")
   set(CMAKE_INCLUDE_CURRENT_DIR ON)
 endif()
+
+set(CLANG_TIDY "" CACHE STRING "CMAKE_CXX_CLANG_TIDY equivalent that only applies to mixxx sources, not bundled dependencies")
 
 # Mixxx itself
 add_library(mixxx-lib STATIC EXCLUDE_FROM_ALL
@@ -553,6 +577,7 @@ add_library(mixxx-lib STATIC EXCLUDE_FROM_ALL
   src/library/dao/playlistdao.cpp
   src/library/dao/settingsdao.cpp
   src/library/dao/trackdao.cpp
+  src/library/dao/trackschema.cpp
   src/library/dlganalysis.cpp
   src/library/dlganalysis.ui
   src/library/dlgcoverartfullsize.cpp
@@ -636,6 +661,7 @@ add_library(mixxx-lib STATIC EXCLUDE_FROM_ALL
   src/mixer/previewdeck.cpp
   src/mixer/sampler.cpp
   src/mixer/samplerbank.cpp
+  src/coreservices.cpp
   src/mixxx.cpp
   src/mixxxapplication.cpp
   src/musicbrainz/chromaprinter.cpp
@@ -932,7 +958,7 @@ add_library(mixxx-lib STATIC EXCLUDE_FROM_ALL
   src/widget/wwidgetgroup.cpp
   src/widget/wwidgetstack.cpp
 )
-set_target_properties(mixxx-lib PROPERTIES AUTOMOC ON AUTOUIC ON)
+set_target_properties(mixxx-lib PROPERTIES AUTOMOC ON AUTOUIC ON CXX_CLANG_TIDY "${CLANG_TIDY}")
 target_include_directories(mixxx-lib PUBLIC src "${CMAKE_CURRENT_BINARY_DIR}/src")
 target_compile_definitions(mixxx-lib PRIVATE SETTINGS_FILE="mixxx.cfg")
 if(UNIX AND NOT APPLE)
@@ -940,6 +966,16 @@ if(UNIX AND NOT APPLE)
 endif()
 
 # Disable warnings in generated source files
+set_property(
+  SOURCE src/library/rekordbox/rekordbox_anlz.cpp
+  APPEND_STRING
+  PROPERTY CXX_CLANG_TIDY ""
+)
+set_property(
+  SOURCE src/library/rekordbox/rekordbox_pdb.cpp
+  APPEND_STRING
+  PROPERTY CXX_CLANG_TIDY ""
+)
 if(GNU_GCC OR LLVM_CLANG)
   set_property(
     SOURCE src/library/rekordbox/rekordbox_anlz.cpp
@@ -1098,6 +1134,7 @@ endif()
 
 # The mixxx executable
 add_executable(mixxx WIN32 src/main.cpp)
+set_target_properties(mixxx-lib PROPERTIES CXX_CLANG_TIDY "${CLANG_TIDY}")
 target_link_libraries(mixxx PUBLIC mixxx-lib)
 
 #
@@ -1328,8 +1365,8 @@ set(INSTALL_GTEST OFF CACHE BOOL "Disable installation of GoogleTest" FORCE)
 # Add googletest directly to our build. This adds the following targets:
 # gtest, gtest_main, gmock and gmock_main
 add_subdirectory(
-  "${CMAKE_CURRENT_SOURCE_DIR}/lib/googletest-1.8.x"
-  "${CMAKE_CURRENT_BINARY_DIR}/lib/googletest-1.8.x"
+  "${CMAKE_CURRENT_SOURCE_DIR}/lib/googletest-1.10.x"
+  "${CMAKE_CURRENT_BINARY_DIR}/lib/googletest-1.10.x"
 )
 
 add_executable(mixxx-test
@@ -1480,7 +1517,8 @@ if(UNIX AND USE_SYMLINKS)
   )
 else()
   add_custom_target(mixxx-testdata
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/src/test" "${CMAKE_CURRENT_BINARY_DIR}/src/test"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/src/test"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/src/test" "${CMAKE_CURRENT_BINARY_DIR}/src/test"
     COMMENT "Copying test data to build directory..."
   )
 endif()
@@ -1506,7 +1544,8 @@ if(UNIX AND USE_SYMLINKS)
   )
 else()
   add_custom_target(mixxx-res
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/res" "${CMAKE_CURRENT_BINARY_DIR}/res"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/res"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/res" "${CMAKE_CURRENT_BINARY_DIR}/res"
     COMMENT "Copying resources to build directory..."
   )
 endif()
