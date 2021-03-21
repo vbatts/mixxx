@@ -929,8 +929,8 @@ void EngineBuffer::processTrackLocked(
     // we need to sync phase or we'll be totally out of whack and the sync
     // adjuster will kick in and push the track back in to sync with the
     // master.
-    if (m_scratching_old && !is_scratching && m_pQuantize->toBool()
-            && m_pSyncControl->getSyncMode() == SYNC_FOLLOWER && !paused) {
+    if (m_scratching_old && !is_scratching && m_pQuantize->toBool() &&
+            isFollower(m_pSyncControl->getSyncMode()) && !paused) {
         // TODO() The resulting seek is processed in the following callback
         // That is to late
         requestSyncPhase();
@@ -1269,8 +1269,8 @@ void EngineBuffer::processSeek(bool paused) {
         position = m_pLoopingControl->getSyncPositionInsideLoop(requestedPosition, syncPosition);
         if (kLogger.traceEnabled()) {
             kLogger.trace()
-                    << "EngineBuffer::processSeek seek info: " << m_filepos_play
-                    << " -> " << position;
+                    << "EngineBuffer::processSeek" << getGroup() << "seek info:" << m_filepos_play
+                    << "->" << position;
         }
     }
     if (position != m_filepos_play) {
@@ -1289,13 +1289,13 @@ void EngineBuffer::postProcess(const int iBufferSize) {
     if (kLogger.traceEnabled()) {
         kLogger.trace() << getGroup() << "EngineBuffer::postProcess";
     }
-    double local_bpm = m_pBpmControl->updateLocalBpm();
-    double beat_distance = m_pBpmControl->updateBeatDistance();
-    m_pSyncControl->setLocalBpm(local_bpm);
+    double localBpm = m_pBpmControl->updateLocalBpm();
+    double beatDistance = m_pBpmControl->updateBeatDistance();
+    m_pSyncControl->setLocalBpm(localBpm);
     SyncMode mode = m_pSyncControl->getSyncMode();
     if (isMaster(mode)) {
-        m_pEngineSync->notifyBeatDistanceChanged(m_pSyncControl, beat_distance);
-    } else if (mode == SYNC_FOLLOWER) {
+        m_pEngineSync->notifyBeatDistanceChanged(m_pSyncControl, beatDistance);
+    } else if (isFollower(mode)) {
         // Report our speed to SyncControl.  If we are master, we already did this.
         m_pSyncControl->reportPlayerSpeed(m_speed_old, m_scratching_old);
         m_pSyncControl->updateTargetBeatDistance();
@@ -1356,6 +1356,12 @@ void EngineBuffer::updateIndicators(double speed, int iBufferSize) {
             (double)iBufferSize / m_trackSamplesOld,
             fractionalPlayposFromAbsolute(m_dSlipPosition),
             tempoTrackSeconds);
+
+    // TODO: Especially with long audio buffers, jitter is visible. This can be fixed by moving the
+    // ClockControl::updateIndicators into the waveform update loop which is synced with the display refresh rate.
+    // Via the visual play position it's possible to access to the sample that is currently played,
+    // and not the one that have been processed as in the current solution.
+    m_pClockControl->updateIndicators(speed * m_baserate_old, m_filepos_play, m_pSampleRate->get());
 }
 
 void EngineBuffer::hintReader(const double dRate) {

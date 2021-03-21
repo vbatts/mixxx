@@ -251,7 +251,9 @@ void DlgTrackInfo::populateFields(const Track& track) {
     txtDateAdded->setText(mixxx::displayLocalDateTime(track.getDateAdded()));
     txtLocation->setText(QDir::toNativeSeparators(track.getLocation()));
     txtType->setText(track.getType());
-    txtBitrate->setText(QString(track.getBitrateText()) + (" ") +
+    txtBitrate->setText(
+            track.getBitrateText() +
+            QChar(' ') +
             tr(mixxx::audio::Bitrate::unit()));
     txtBpm->setText(track.getBpmText());
     m_keysClone = track.getKeys();
@@ -395,10 +397,8 @@ void DlgTrackInfo::saveTrack() {
     m_pLoadedTrack->setTrackNumber(txtTrackNumber->text());
     m_pLoadedTrack->setComment(txtComment->toPlainText());
 
-    if (!m_pLoadedTrack->isBpmLocked()) {
-        m_pLoadedTrack->setBeats(m_pBeatsClone);
-        reloadTrackBeats(*m_pLoadedTrack);
-    }
+    m_pLoadedTrack->trySetBeats(m_pBeatsClone);
+    reloadTrackBeats(*m_pLoadedTrack);
 
     // If the user is editing the key and hits enter to close DlgTrackInfo, the
     // editingFinished signal will not fire in time. Run the key text changed

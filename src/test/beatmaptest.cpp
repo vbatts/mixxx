@@ -48,7 +48,7 @@ class BeatMapTest : public testing::Test {
 
 TEST_F(BeatMapTest, Scale) {
     const double bpm = 60.0;
-    m_pTrack->setBpm(bpm);
+    m_pTrack->trySetBpm(bpm);
     double beatLengthFrames = getBeatLengthFrames(bpm);
     double startOffsetFrames = 7;
     const int numBeats = 100;
@@ -78,7 +78,7 @@ TEST_F(BeatMapTest, Scale) {
 
 TEST_F(BeatMapTest, TestNthBeat) {
     const double bpm = 60.0;
-    m_pTrack->setBpm(bpm);
+    m_pTrack->trySetBpm(bpm);
     double beatLengthFrames = getBeatLengthFrames(bpm);
     double startOffsetFrames = 7;
     double beatLengthSamples = getBeatLengthSamples(bpm);
@@ -99,18 +99,18 @@ TEST_F(BeatMapTest, TestNthBeat) {
     EXPECT_EQ(-1, pMap->findNthBeat(firstBeat, -2));
 
     double prevBeat, nextBeat;
-    pMap->findPrevNextBeats(lastBeat, &prevBeat, &nextBeat);
+    pMap->findPrevNextBeats(lastBeat, &prevBeat, &nextBeat, true);
     EXPECT_EQ(lastBeat, prevBeat);
     EXPECT_EQ(-1, nextBeat);
 
-    pMap->findPrevNextBeats(firstBeat, &prevBeat, &nextBeat);
+    pMap->findPrevNextBeats(firstBeat, &prevBeat, &nextBeat, true);
     EXPECT_EQ(firstBeat, prevBeat);
     EXPECT_EQ(firstBeat + beatLengthSamples, nextBeat);
 }
 
 TEST_F(BeatMapTest, TestNthBeatWhenOnBeat) {
     const double bpm = 60.0;
-    m_pTrack->setBpm(bpm);
+    m_pTrack->trySetBpm(bpm);
     double beatLengthFrames = getBeatLengthFrames(bpm);
     double startOffsetFrames = 7;
     double beatLengthSamples = getBeatLengthSamples(bpm);
@@ -136,7 +136,12 @@ TEST_F(BeatMapTest, TestNthBeatWhenOnBeat) {
 
     // Also test prev/next beat calculation.
     double prevBeat, nextBeat;
-    pMap->findPrevNextBeats(position, &prevBeat, &nextBeat);
+    pMap->findPrevNextBeats(position, &prevBeat, &nextBeat, true);
+    EXPECT_EQ(position, prevBeat);
+    EXPECT_EQ(position + beatLengthSamples, nextBeat);
+
+    // Also test prev/next beat calculation without snaping tolerance
+    pMap->findPrevNextBeats(position, &prevBeat, &nextBeat, false);
     EXPECT_EQ(position, prevBeat);
     EXPECT_EQ(position + beatLengthSamples, nextBeat);
 
@@ -147,7 +152,7 @@ TEST_F(BeatMapTest, TestNthBeatWhenOnBeat) {
 
 TEST_F(BeatMapTest, TestNthBeatWhenOnBeat_BeforeEpsilon) {
     const double bpm = 60.0;
-    m_pTrack->setBpm(bpm);
+    m_pTrack->trySetBpm(bpm);
     double beatLengthFrames = getBeatLengthFrames(bpm);
     double startOffsetFrames = 7;
     double beatLengthSamples = getBeatLengthSamples(bpm);
@@ -174,9 +179,14 @@ TEST_F(BeatMapTest, TestNthBeatWhenOnBeat_BeforeEpsilon) {
 
     // Also test prev/next beat calculation
     double prevBeat, nextBeat;
-    pMap->findPrevNextBeats(position, &prevBeat, &nextBeat);
+    pMap->findPrevNextBeats(position, &prevBeat, &nextBeat, true);
     EXPECT_EQ(kClosestBeat, prevBeat);
     EXPECT_EQ(kClosestBeat + beatLengthSamples, nextBeat);
+
+    // Also test prev/next beat calculation without snaping tolerance
+    pMap->findPrevNextBeats(position, &prevBeat, &nextBeat, false);
+    EXPECT_EQ(kClosestBeat - beatLengthSamples, prevBeat);
+    EXPECT_EQ(kClosestBeat, nextBeat);
 
     // Both previous and next beat should return the closest beat.
     EXPECT_EQ(kClosestBeat, pMap->findNextBeat(position));
@@ -186,7 +196,7 @@ TEST_F(BeatMapTest, TestNthBeatWhenOnBeat_BeforeEpsilon) {
 
 TEST_F(BeatMapTest, TestNthBeatWhenOnBeat_AfterEpsilon) {
     const double bpm = 60.0;
-    m_pTrack->setBpm(bpm);
+    m_pTrack->trySetBpm(bpm);
     double beatLengthFrames = getBeatLengthFrames(bpm);
     double startOffsetFrames = 7;
     double beatLengthSamples = getBeatLengthSamples(bpm);
@@ -215,7 +225,12 @@ TEST_F(BeatMapTest, TestNthBeatWhenOnBeat_AfterEpsilon) {
 
     // Also test prev/next beat calculation.
     double prevBeat, nextBeat;
-    pMap->findPrevNextBeats(position, &prevBeat, &nextBeat);
+    pMap->findPrevNextBeats(position, &prevBeat, &nextBeat, true);
+    EXPECT_EQ(kClosestBeat, prevBeat);
+    EXPECT_EQ(kClosestBeat + beatLengthSamples, nextBeat);
+
+    // Also test prev/next beat calculation without snapping tolerance
+    pMap->findPrevNextBeats(position, &prevBeat, &nextBeat, false);
     EXPECT_EQ(kClosestBeat, prevBeat);
     EXPECT_EQ(kClosestBeat + beatLengthSamples, nextBeat);
 
@@ -226,7 +241,7 @@ TEST_F(BeatMapTest, TestNthBeatWhenOnBeat_AfterEpsilon) {
 
 TEST_F(BeatMapTest, TestNthBeatWhenNotOnBeat) {
     const double bpm = 60.0;
-    m_pTrack->setBpm(bpm);
+    m_pTrack->trySetBpm(bpm);
     double beatLengthFrames = getBeatLengthFrames(bpm);
     double startOffsetFrames = 7;
     double beatLengthSamples = getBeatLengthSamples(bpm);
@@ -255,7 +270,12 @@ TEST_F(BeatMapTest, TestNthBeatWhenNotOnBeat) {
 
     // Also test prev/next beat calculation
     double foundPrevBeat, foundNextBeat;
-    pMap->findPrevNextBeats(position, &foundPrevBeat, &foundNextBeat);
+    pMap->findPrevNextBeats(position, &foundPrevBeat, &foundNextBeat, true);
+    EXPECT_EQ(previousBeat, foundPrevBeat);
+    EXPECT_EQ(nextBeat, foundNextBeat);
+
+    // Also test prev/next beat calculation without snaping tolerance
+    pMap->findPrevNextBeats(position, &foundPrevBeat, &foundNextBeat, false);
     EXPECT_EQ(previousBeat, foundPrevBeat);
     EXPECT_EQ(nextBeat, foundNextBeat);
 }
@@ -263,7 +283,7 @@ TEST_F(BeatMapTest, TestNthBeatWhenNotOnBeat) {
 TEST_F(BeatMapTest, TestBpmAround) {
     const double filebpm = 60.0;
     double approx_beat_length = getBeatLengthSamples(filebpm);
-    m_pTrack->setBpm(filebpm);
+    m_pTrack->trySetBpm(filebpm);
     const int numBeats = 64;
 
     QVector<double> beats;
