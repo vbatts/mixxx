@@ -25,7 +25,7 @@ if(POLICY CMP0071)
   cmake_policy(SET CMP0071 NEW)
 endif()
 
-project(mixxx VERSION 2.3.0)
+project(mixxx VERSION 2.4.0)
 
 set(CMAKE_PROJECT_HOMEPAGE_URL "https://www.mixxx.org")
 set(CMAKE_PROJECT_DESCRIPTION "Mixxx is Free DJ software that gives you everything you need to perform live mixes.")
@@ -1722,17 +1722,25 @@ if(ENGINEPRIME)
     set(DJINTEROP_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/lib/libdjinterop-install")
     set(DJINTEROP_LIBRARY "lib/${CMAKE_STATIC_LIBRARY_PREFIX}djinterop${CMAKE_STATIC_LIBRARY_SUFFIX}")
     file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/download")
+
+    # CMake does not pass lists of paths properly to external projects.
+    # This is worked around by changing the list separator.
+    string(REPLACE ";" "|" PIPE_DELIMITED_CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+
+    # External project sources must be downloaded as an archive into DOWNLOAD_DIR
+    # from an URL to keep offline builds like for Fedora/RPM Fusion working!
     ExternalProject_Add(libdjinterop
-      URL "https://github.com/xsco/libdjinterop/archive/0.15.1.tar.gz"
-      URL_HASH SHA256=87b3e6c726c208333d55b7e7e3af0a7230c9ad9edb3ca0ca81feffe17b3fc008
+      URL "https://github.com/xsco/libdjinterop/archive/0.15.2.tar.gz"
+      URL_HASH SHA256=66f64c0b38a53936ba1b471524905e35afd605bc05d29e7aa6fa7ea0005c7d54
       DOWNLOAD_DIR "${CMAKE_CURRENT_BINARY_DIR}/download/libdjinterop"
       INSTALL_DIR ${DJINTEROP_INSTALL_DIR}
+      LIST_SEPARATOR "|"
       CMAKE_ARGS
         -DBUILD_SHARED_LIBS=OFF
         -DCMAKE_SKIP_INSTALL_ALL_DEPENDENCY=ON
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
-        -DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}
+        -DCMAKE_PREFIX_PATH=${PIPE_DELIMITED_CMAKE_PREFIX_PATH}
         -DCMAKE_INSTALL_LIBDIR:PATH=lib
         -DCMAKE_MODULE_PATH:PATH=${CMAKE_MODULE_PATH}
         -DSYSTEM_SQLITE=${DJINTEROP_SYSTEM_SQLITE}
@@ -1829,6 +1837,8 @@ if(KEYFINDER)
     set(KeyFinder_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/lib/keyfinder-install")
     set(KeyFinder_LIBRARY "${CMAKE_INSTALL_LIBDIR}/${CMAKE_STATIC_LIBRARY_PREFIX}keyfinder${CMAKE_STATIC_LIBRARY_SUFFIX}")
     file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/download")
+    # External project sources must be downloaded as an archive into DOWNLOAD_DIR
+    # from an URL to keep offline builds like for Fedora/RPM Fusion working!
     ExternalProject_Add(libkeyfinder
       URL "https://github.com/mixxxdj/libkeyfinder/archive/v2.2.4.zip"
       URL_HASH SHA256=cb3fea8c7213257281b6c7006b2430809f466ad8a1d485663324378d6fc0782c
