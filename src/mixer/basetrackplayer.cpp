@@ -213,26 +213,7 @@ TrackPointer BaseTrackPlayerImpl::loadFakeTrack(bool bPlay, double filebpm) {
     m_pLoadedTrack = pTrack;
     if (m_pLoadedTrack) {
         // Listen for updates to the file's BPM
-        connect(m_pLoadedTrack.get(),
-                &Track::bpmUpdated,
-                m_pFileBPM.get(),
-                QOverload<double>::of(&ControlObject::set));
-
-        connect(m_pLoadedTrack.get(),
-                &Track::keyUpdated,
-                m_pKey.get(),
-                &ControlProxy::set);
-
-        // Listen for updates to the file's Replay Gain
-        connect(m_pLoadedTrack.get(),
-                &Track::replayGainUpdated,
-                this,
-                &BaseTrackPlayerImpl::slotSetReplayGain);
-
-        connect(m_pLoadedTrack.get(),
-                &Track::colorUpdated,
-                this,
-                &BaseTrackPlayerImpl::slotSetTrackColor);
+        connectLoadedTrack();
     }
 
     // Request a new track from EngineBuffer
@@ -284,11 +265,17 @@ void BaseTrackPlayerImpl::loadTrack(TrackPointer pTrack) {
         }
 
         if (pLoopCue) {
-            double loopStart = pLoopCue->getPosition();
-            double loopEnd = loopStart + pLoopCue->getLength();
-            if (loopStart != kNoTrigger && loopEnd != kNoTrigger && loopStart <= loopEnd) {
-                m_pLoopInPoint->set(loopStart);
-                m_pLoopOutPoint->set(loopEnd);
+            const auto loop = pLoopCue->getStartAndEndPosition();
+            if (loop.startPosition.isValid() && loop.endPosition.isValid() &&
+                    loop.startPosition <= loop.endPosition) {
+                // TODO: For all loop cues, both end and start positions should
+                // be valid and the end position should be greater than the
+                // start positon. We should use a VERIFY_OR_DEBUG_ASSERT to
+                // check this. To make this possible, we need to ensure that
+                // all invalid cues are discarded when saving cues to the
+                // database first.
+                m_pLoopInPoint->set(loop.startPosition.toEngineSamplePos());
+                m_pLoopOutPoint->set(loop.endPosition.toEngineSamplePos());
             }
         }
     } else {
@@ -309,11 +296,17 @@ TrackPointer BaseTrackPlayerImpl::unloadTrack() {
         return TrackPointer();
     }
 
+    PlayerInfo::instance().setTrackInfo(getGroup(), TrackPointer());
+
     // Save the loops that are currently set in a loop cue. If no loop cue is
     // currently on the track, then create a new one.
-    double loopStart = m_pLoopInPoint->get();
-    double loopEnd = m_pLoopOutPoint->get();
-    if (loopStart != kNoTrigger && loopEnd != kNoTrigger && loopStart <= loopEnd) {
+    const auto loopStart =
+            mixxx::audio::FramePos::fromEngineSamplePosMaybeInvalid(
+                    m_pLoopInPoint->get());
+    const auto loopEnd =
+            mixxx::audio::FramePos::fromEngineSamplePosMaybeInvalid(
+                    m_pLoopOutPoint->get());
+    if (loopStart.isValid() && loopEnd.isValid() && loopStart <= loopEnd) {
         CuePointer pLoopCue;
         QList<CuePointer> cuePoints(m_pLoadedTrack->getCuePoints());
         QListIterator<CuePointer> it(cuePoints);
@@ -349,17 +342,32 @@ TrackPointer BaseTrackPlayerImpl::unloadTrack() {
 
 void BaseTrackPlayerImpl::connectLoadedTrack() {
     connect(m_pLoadedTrack.get(),
-            &Track::bpmUpdated,
-            m_pFileBPM.get(),
-            QOverload<double>::of(&ControlObject::set));
+            &Track::bpmChanged,
+            this,
+            [this] {
+                TrackPointer pTrack = m_pLoadedTrack;
+                if (pTrack) {
+                    m_pFileBPM->set(pTrack->getBpm());
+                }
+            });
+
     connect(m_pLoadedTrack.get(),
-            &Track::keyUpdated,
-            m_pKey.get(),
-            &ControlProxy::set);
+            &Track::keyChanged,
+            this,
+            [this] {
+                TrackPointer pTrack = m_pLoadedTrack;
+                if (pTrack) {
+                    const auto key = pTrack->getKeys().getGlobalKey();
+                    m_pKey->set(static_cast<double>(key));
+                }
+            });
+
+    // Listen for updates to the file's Replay Gain
     connect(m_pLoadedTrack.get(),
             &Track::replayGainUpdated,
             this,
             &BaseTrackPlayerImpl::slotSetReplayGain);
+
     connect(m_pLoadedTrack.get(),
             &Track::colorUpdated,
             this,

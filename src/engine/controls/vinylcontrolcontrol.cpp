@@ -2,7 +2,6 @@
 
 #include "moc_vinylcontrolcontrol.cpp"
 #include "track/track.h"
-#include "util/math.h"
 #include "vinylcontrol/vinylcontrol.h"
 
 VinylControlControl::VinylControlControl(const QString& group, UserSettingsPointer pConfig)
@@ -80,7 +79,7 @@ void VinylControlControl::notifySeekQueued() {
 
 void VinylControlControl::slotControlVinylSeek(double fractionalPos) {
     // Prevent NaN's from sneaking into the engine.
-    if (isnan(fractionalPos)) {
+    if (util_isnan(fractionalPos)) {
         return;
     }
 
@@ -128,7 +127,7 @@ void VinylControlControl::slotControlVinylSeek(double fractionalPos) {
                 continue;
             }
 
-            double cue_position = pCue->getPosition();
+            double cue_position = pCue->getPosition().toEngineSamplePosMaybeInvalid();
             // pick cues closest to new_playpos
             if ((nearest_playpos == -1) ||
                 (fabs(new_playpos - cue_position) < shortest_distance)) {
