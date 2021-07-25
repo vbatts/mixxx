@@ -379,7 +379,8 @@ if(MSVC)
   default_option(SCCACHE_SUPPORT "Enable sccache support" "SCCACHE_EXECUTABLE")
   message(STATUS "Support for sccache: ${SCCACHE_SUPPORT}")
   if(SCCACHE_SUPPORT)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "sccache")
+    set( CMAKE_C_COMPILER_LAUNCHER "${SCCACHE_EXECUTABLE}" )
+    set( CMAKE_CXX_COMPILER_LAUNCHER "${SCCACHE_EXECUTABLE}" )
   endif()
 else()
   # ccache support
@@ -395,8 +396,8 @@ else()
       # without this compiler messages in `make` backend would be uncolored
       set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fdiagnostics-color=${BUILD_COLORS}")
     endif()
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "ccache")
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "ccache")
+    set( CMAKE_C_COMPILER_LAUNCHER "${CCACHE_EXECUTABLE}" )
+    set( CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_EXECUTABLE}" )
   endif()
   message(STATUS "Support for ccache: ${CCACHE_SUPPORT}")
 endif()
@@ -887,6 +888,7 @@ add_library(mixxx-lib STATIC EXCLUDE_FROM_ALL
   src/util/sandbox.cpp
   src/util/semanticversion.cpp
   src/util/screensaver.cpp
+  src/util/screensavermanager.cpp
   src/util/sleepableqthread.cpp
   src/util/stat.cpp
   src/util/statmodel.cpp
@@ -1740,11 +1742,6 @@ if(WIN32)
     "${CMAKE_CURRENT_BINARY_DIR}/src/mixxx.rc.include"
     "${CMAKE_CURRENT_BINARY_DIR}/src/gitinfo.h"
   )
-  # sccache fails with RC files
-  # https://github.com/mozilla/sccache/issues/947
-  if(SCCACHE_SUPPORT)
-    set_target_properties(mixxx PROPERTIES RULE_LAUNCH_COMPILE "")
-  endif()
   target_include_directories(mixxx PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
 
@@ -1800,8 +1797,8 @@ if(ENGINEPRIME)
     # External project sources must be downloaded as an archive into DOWNLOAD_DIR
     # from an URL to keep offline builds like for Fedora/RPM Fusion working!
     ExternalProject_Add(libdjinterop
-      URL "https://github.com/xsco/libdjinterop/archive/0.15.2.tar.gz"
-      URL_HASH SHA256=66f64c0b38a53936ba1b471524905e35afd605bc05d29e7aa6fa7ea0005c7d54
+      URL "https://github.com/xsco/libdjinterop/archive/0.16.0.tar.gz"
+      URL_HASH SHA256=c998831fe4d3cc80c5c031491204244c9ed0c61575dd529260304b95d79db588
       DOWNLOAD_DIR "${CMAKE_CURRENT_BINARY_DIR}/download/libdjinterop"
       INSTALL_DIR ${DJINTEROP_INSTALL_DIR}
       LIST_SEPARATOR "|"
@@ -2296,15 +2293,6 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 target_link_libraries(mixxx-lib PRIVATE Threads::Threads)
 
-# Upower
-if(UNIX AND NOT APPLE)
-  find_package(GLIB COMPONENTS gobject REQUIRED)
-  find_package(Upower REQUIRED)
-  target_include_directories(mixxx-lib SYSTEM PUBLIC ${GLIB_INCLUDE_DIRS})
-  target_link_libraries(mixxx-lib PRIVATE ${GLIB_LIBRARIES} ${GLIB_GOBJECT_LIBRARIES})
-  target_link_libraries(mixxx-lib PRIVATE Upower::Upower)
-endif()
-
 # iOS/OS X Frameworks
 if(APPLE)
   find_library(COREFOUNDATION_LIBRARY CoreFoundation REQUIRED)
@@ -2340,6 +2328,10 @@ if(BATTERY)
   elseif(APPLE)
     target_sources(mixxx-lib PRIVATE src/util/battery/batterymac.cpp)
   elseif(UNIX)
+    find_package(Upower REQUIRED)
+    find_package(GLIB COMPONENTS gobject REQUIRED)
+    target_include_directories(mixxx-lib SYSTEM PUBLIC ${GLIB_INCLUDE_DIRS})
+    target_link_libraries(mixxx-lib PRIVATE Upower::Upower ${GLIB_LIBRARIES} ${GLIB_GOBJECT_LIBRARIES})
     target_sources(mixxx-lib PRIVATE src/util/battery/batterylinux.cpp)
   else()
     message(FATAL_ERROR "Battery support is not implemented for the target platform.")

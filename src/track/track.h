@@ -128,7 +128,10 @@ class Track : public QObject {
     }
 
     // Sets the BPM if not locked.
-    bool trySetBpm(double bpm);
+    bool trySetBpm(double bpmValue) {
+        return trySetBpm(mixxx::Bpm(bpmValue));
+    }
+    bool trySetBpm(mixxx::Bpm bpm);
 
     // Returns BPM
     double getBpm() const;
@@ -263,16 +266,8 @@ class Track : public QObject {
 
     /// Get the track's main cue point
     mixxx::audio::FramePos getMainCuePosition() const;
-    CuePosition getCuePoint() const {
-        return getMainCuePosition().toEngineSamplePosMaybeInvalid();
-    };
     // Set the track's main cue point
     void setMainCuePosition(mixxx::audio::FramePos position);
-    void setCuePoint(CuePosition position) {
-        setMainCuePosition(
-                mixxx::audio::FramePos::fromEngineSamplePosMaybeInvalid(
-                        position.getPosition()));
-    }
     /// Shift all cues by a constant offset
     void shiftCuePositionsMillis(mixxx::audio::FrameDiff_t milliseconds);
     // Call when analysis is done.
@@ -474,7 +469,7 @@ class Track : public QObject {
     bool importPendingCueInfosWhileLocked();
 
     mixxx::Bpm getBpmWhileLocked() const;
-    bool trySetBpmWhileLocked(double bpmValue);
+    bool trySetBpmWhileLocked(mixxx::Bpm bpm);
     bool trySetBeatsWhileLocked(
             mixxx::BeatsPointer pBeats,
             bool lockBpmAfterSet = false);
