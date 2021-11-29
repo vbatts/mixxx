@@ -17,6 +17,7 @@
 class ControlProxy;
 class DlgTagFetcher;
 class DlgTrackInfo;
+//class DlgDeleteFilesConfirmation;
 class ExternalTrackCollection;
 class Library;
 class TrackModel;
@@ -33,7 +34,7 @@ class WTrackMenu : public QMenu {
     Q_OBJECT
   public:
     enum Feature {
-        AutoDJ = 1,
+        AutoDJ = 1 << 0,
         // The loadTrackToPlayer signal emitted from this class must be handled to make LoadTo work.
         LoadTo = 1 << 1,
         Playlist = 1 << 2,
@@ -44,13 +45,15 @@ class WTrackMenu : public QMenu {
         BPM = 1 << 7,
         Color = 1 << 8,
         HideUnhidePurge = 1 << 9,
-        FileBrowser = 1 << 10,
-        Properties = 1 << 11,
-        SearchRelated = 1 << 12,
+        RemoveFromDisk = 1 << 10,
+        FileBrowser = 1 << 11,
+        Properties = 1 << 12,
+        SearchRelated = 1 << 13,
+        UpdateReplayGain = 1 << 14,
         TrackModelFeatures = Remove | HideUnhidePurge,
         All = AutoDJ | LoadTo | Playlist | Crate | Remove | Metadata | Reset |
-                BPM | Color | HideUnhidePurge | FileBrowser | Properties |
-                SearchRelated
+                BPM | Color | HideUnhidePurge | RemoveFromDisk | FileBrowser |
+                Properties | SearchRelated | UpdateReplayGain
     };
     Q_DECLARE_FLAGS(Features, Feature)
 
@@ -69,12 +72,14 @@ class WTrackMenu : public QMenu {
             const QModelIndexList& trackIndexList);
 
     void loadTrack(
-            const TrackPointer& pTrack);
+            const TrackPointer& pTrack, const QString& deckGroup);
 
     // WARNING: This function hides non-virtual QMenu::popup().
     // This has been done on purpose to ensure menu doesn't popup without loaded track(s).
     void popup(const QPoint& pos, QAction* at = nullptr);
     void slotShowDlgTrackInfo();
+    // Library management
+    void slotRemoveFromDisk();
 
   signals:
     void loadTrackToPlayer(TrackPointer pTrack, const QString& group, bool play = false);
@@ -106,6 +111,7 @@ class WTrackMenu : public QMenu {
     void slotScaleBpm(mixxx::Beats::BpmScale scale);
 
     // Info and metadata
+    void slotUpdateReplayGainFromPregain();
     void slotShowDlgTagFetcher();
     void slotImportMetadataFromFileTags();
     void slotExportMetadataIntoFileTags();
@@ -186,8 +192,11 @@ class WTrackMenu : public QMenu {
     TrackModel* const m_pTrackModel;
     QModelIndexList m_trackIndexList;
 
-    // Source of track list when TrackModel is not set.
-    TrackPointerList m_trackPointerList;
+    /// Track being referenced when TrackModel is not set.
+    TrackPointer m_pTrack;
+    /// If the user right clicked on a track in a deck, this will record which
+    /// deck made the request.
+    QString m_deckGroup;
 
     const ControlProxy* m_pNumSamplers{};
     const ControlProxy* m_pNumDecks{};
@@ -206,6 +215,10 @@ class WTrackMenu : public QMenu {
     QMenu* m_pColorMenu{};
     WCoverArtMenu* m_pCoverMenu{};
     parented_ptr<WSearchRelatedTracksMenu> m_pSearchRelatedMenu;
+    QMenu* m_pRemoveFromDiskMenu{};
+
+    // Update ReplayGain from Track
+    QAction* m_pUpdateReplayGain{};
 
     // Reload Track Metadata Action:
     QAction* m_pImportMetadataFromFileAct{};
@@ -229,6 +242,7 @@ class WTrackMenu : public QMenu {
     QAction* m_pHideAct{};
     QAction* m_pUnhideAct{};
     QAction* m_pPurgeAct{};
+    QAction* m_pRemoveFromDiskAct{};
 
     // Show track-editor action
     QAction* m_pPropertiesAct{};
