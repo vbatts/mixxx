@@ -1,6 +1,5 @@
 #include "library/recording/dlgrecording.h"
 
-#include <QDesktopServices>
 
 #include "control/controlobject.h"
 #include "library/trackcollectionmanager.h"
@@ -206,6 +205,6 @@ void DlgRecording::saveCurrentViewState() {
     m_pTrackTableView->saveCurrentViewState();
 }
 
-void DlgRecording::restoreCurrentViewState() {
-    m_pTrackTableView->restoreCurrentViewState();
+bool DlgRecording::restoreCurrentViewState() {
+    return m_pTrackTableView->restoreCurrentViewState();
 }
