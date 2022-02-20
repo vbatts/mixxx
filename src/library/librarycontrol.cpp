@@ -13,6 +13,7 @@
 #include "library/libraryview.h"
 #include "mixer/playermanager.h"
 #include "moc_librarycontrol.cpp"
+#include "util/cmdlineargs.h"
 #include "widget/wlibrary.h"
 #include "widget/wlibrarysidebar.h"
 #include "widget/wsearchlineedit.h"
@@ -75,6 +76,7 @@ LibraryControl::LibraryControl(Library* pLibrary)
     m_pMoveUp = std::make_unique<ControlPushButton>(ConfigKey("[Library]", "MoveUp"));
     m_pMoveDown = std::make_unique<ControlPushButton>(ConfigKey("[Library]", "MoveDown"));
     m_pMoveVertical = std::make_unique<ControlEncoder>(ConfigKey("[Library]", "MoveVertical"), false);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     connect(m_pMoveUp.get(),
             &ControlPushButton::valueChanged,
             this,
@@ -87,11 +89,13 @@ LibraryControl::LibraryControl(Library* pLibrary)
             &ControlEncoder::valueChanged,
             this,
             &LibraryControl::slotMoveVertical);
+#endif
 
     // Controls to navigate vertically within currently focused widget (up/down buttons)
     m_pScrollUp = std::make_unique<ControlPushButton>(ConfigKey("[Library]", "ScrollUp"));
     m_pScrollDown = std::make_unique<ControlPushButton>(ConfigKey("[Library]", "ScrollDown"));
     m_pScrollVertical = std::make_unique<ControlEncoder>(ConfigKey("[Library]", "ScrollVertical"), false);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     connect(m_pScrollUp.get(),
             &ControlPushButton::valueChanged,
             this,
@@ -104,11 +108,13 @@ LibraryControl::LibraryControl(Library* pLibrary)
             &ControlEncoder::valueChanged,
             this,
             &LibraryControl::slotScrollVertical);
+#endif
 
     // Controls to navigate horizontally within currently selected item (left/right buttons)
     m_pMoveLeft = std::make_unique<ControlPushButton>(ConfigKey("[Library]", "MoveLeft"));
     m_pMoveRight = std::make_unique<ControlPushButton>(ConfigKey("[Library]", "MoveRight"));
     m_pMoveHorizontal = std::make_unique<ControlEncoder>(ConfigKey("[Library]", "MoveHorizontal"), false);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     connect(m_pMoveLeft.get(),
             &ControlPushButton::valueChanged,
             this,
@@ -121,12 +127,14 @@ LibraryControl::LibraryControl(Library* pLibrary)
             &ControlEncoder::valueChanged,
             this,
             &LibraryControl::slotMoveHorizontal);
+#endif
 
     // Controls to navigate between widgets
     // Relative focus controls (tab/shift+tab button)
     m_pMoveFocusForward = std::make_unique<ControlPushButton>(ConfigKey("[Library]", "MoveFocusForward"));
     m_pMoveFocusBackward = std::make_unique<ControlPushButton>(ConfigKey("[Library]", "MoveFocusBackward"));
     m_pMoveFocus = std::make_unique<ControlEncoder>(ConfigKey("[Library]", "MoveFocus"), false);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     connect(m_pMoveFocusForward.get(),
             &ControlPushButton::valueChanged,
             this,
@@ -139,10 +147,13 @@ LibraryControl::LibraryControl(Library* pLibrary)
             &ControlEncoder::valueChanged,
             this,
             &LibraryControl::slotMoveFocus);
+#endif
+
     // Direct focus control, read/write
     m_pLibraryFocusedWidgetCO = std::make_unique<ControlPushButton>(
             ConfigKey("[Library]", "focused_widget"));
     m_pLibraryFocusedWidgetCO->setStates(static_cast<int>(FocusWidget::Count));
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     m_pLibraryFocusedWidgetCO->connectValueChangeRequest(
             this,
             [this](double value) {
@@ -158,39 +169,49 @@ LibraryControl::LibraryControl(Library* pLibrary)
                     setLibraryFocus(static_cast<FocusWidget>(valueInt));
                 }
             });
+#endif
 
     // Control to "goto" the currently selected item in focused widget (context dependent)
     m_pGoToItem = std::make_unique<ControlPushButton>(ConfigKey("[Library]", "GoToItem"));
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     connect(m_pGoToItem.get(),
             &ControlPushButton::valueChanged,
             this,
             &LibraryControl::slotGoToItem);
+#endif
 
     // Auto DJ controls
     m_pAutoDjAddTop = std::make_unique<ControlPushButton>(ConfigKey("[Library]","AutoDjAddTop"));
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     connect(m_pAutoDjAddTop.get(),
             &ControlPushButton::valueChanged,
             this,
             &LibraryControl::slotAutoDjAddTop);
+#endif
 
     m_pAutoDjAddBottom = std::make_unique<ControlPushButton>(ConfigKey("[Library]","AutoDjAddBottom"));
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     connect(m_pAutoDjAddBottom.get(),
             &ControlPushButton::valueChanged,
             this,
             &LibraryControl::slotAutoDjAddBottom);
+#endif
 
     m_pAutoDjAddReplace = std::make_unique<ControlPushButton>(
             ConfigKey("[Library]", "AutoDjAddReplace"));
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     connect(m_pAutoDjAddReplace.get(),
             &ControlPushButton::valueChanged,
             this,
             &LibraryControl::slotAutoDjAddReplace);
+#endif
 
     // Sort controls
     m_pSortColumn = std::make_unique<ControlEncoder>(ConfigKey("[Library]", "sort_column"));
     m_pSortOrder = std::make_unique<ControlPushButton>(ConfigKey("[Library]", "sort_order"));
     m_pSortOrder->setButtonMode(ControlPushButton::TOGGLE);
     m_pSortColumnToggle = std::make_unique<ControlEncoder>(ConfigKey("[Library]", "sort_column_toggle"), false);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     connect(m_pSortColumn.get(),
             &ControlEncoder::valueChanged,
             this,
@@ -221,6 +242,7 @@ LibraryControl::LibraryControl(Library* pLibrary)
             &ControlPushButton::valueChanged,
             this,
             &LibraryControl::slotIncrementFontSize);
+#endif
 
     // Track Color controls
     m_pTrackColorPrev = std::make_unique<ControlPushButton>(ConfigKey("[Library]", "track_color_prev"));
