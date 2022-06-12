@@ -40,7 +40,7 @@ if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED VCPKG_ROOT)
 endif()
 
 if(DEFINED VCPKG_ROOT)
-  set(X_VCPKG_APPLOCAL_DEPS_INSTALL TRUE)
+  set(X_VCPKG_APPLOCAL_DEPS_INSTALL ON CACHE BOOL "Automatically copy dependencies into the install target directory for executables." FORCE)
 
   if(NOT DEFINED VCPKG_OVERLAY_PORTS)
     set(VCPKG_OVERLAY_PORTS "${VCPKG_ROOT}/overlay/ports")
@@ -111,6 +111,7 @@ set(BUILD_COLORS "auto" CACHE STRING "Try to use colors auto/always/no")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 include(CMakeDependentOption)
 include(CheckSymbolExists)
+include(CheckIncludeFileCXX)
 include(ExternalProject)
 include(GNUInstallDirs)
 include(DefaultOption)
@@ -565,6 +566,7 @@ add_library(mixxx-lib STATIC EXCLUDE_FROM_ALL
   src/effects/backends/builtin/moogladder4filtereffect.cpp
   src/effects/backends/builtin/parametriceqeffect.cpp
   src/effects/backends/builtin/phasereffect.cpp
+  src/effects/backends/builtin/pitchshifteffect.cpp
   src/effects/backends/builtin/reverbeffect.cpp
   src/effects/backends/builtin/threebandbiquadeqeffect.cpp
   src/effects/backends/builtin/tremoloeffect.cpp
@@ -1855,7 +1857,7 @@ find_package(SQLite3)
 if(NOT SQLite3_FOUND)
   set(LOCALECOMPARE_DEFAULT OFF)
 else()
-  is_static_library(SQLite3_IS_STATIC SQLite3::SQLite3)
+  is_static_library(SQLite3_IS_STATIC SQLite::SQLite3)
   if(SQLite3_IS_STATIC OR NOT APPLE)
     set(LOCALECOMPARE_DEFAULT ON)
   else()
@@ -1868,10 +1870,10 @@ if(LOCALECOMPARE)
     message(FATAL_ERROR "Locale Aware Compare for SQLite requires libsqlite and its development headers.")
   endif()
   target_compile_definitions(mixxx-lib PUBLIC __SQLITE3__)
-  target_link_libraries(mixxx-lib PRIVATE SQLite3::SQLite3)
+  target_link_libraries(mixxx-lib PRIVATE SQLite::SQLite3)
 elseif(SQLite3_IS_STATIC)
   # in the static case we need to link SQLite3 uncoditionally
-  target_link_libraries(mixxx-lib PRIVATE SQLite3::SQLite3)
+  target_link_libraries(mixxx-lib PRIVATE SQLite::SQLite3)
 endif()
 
 # Denon Engine Prime library export support (using libdjinterop)
@@ -2776,6 +2778,18 @@ if(MODPLUG)
   target_compile_definitions(mixxx-lib PUBLIC __MODPLUG__)
   target_link_libraries(mixxx-lib PRIVATE Modplug::Modplug)
 endif()
+
+find_package(Microsoft.GSL CONFIG)
+if(Microsoft.GSL_FOUND)
+  target_link_libraries(mixxx-lib PRIVATE Microsoft.GSL::GSL)
+else()
+  # check if the headers have been installed without cmake config (< 3.1.0)
+  check_include_file_cxx(gsl/gsl HAVE_GSL_GSL)
+  if(NOT HAVE_GSL_GSL)
+    message(FATAL_ERROR "ms-gsl deveopment headers (libmsgsl-dev) not found")
+  endif()
+endif()
+
 
 # QtKeychain
 option(QTKEYCHAIN "Secure credentials storage support for Live Broadcasting profiles" ON)
