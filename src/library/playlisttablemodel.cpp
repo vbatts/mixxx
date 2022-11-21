@@ -106,6 +106,9 @@ void PlaylistTableModel::initSortColumnMapping() {
     m_columnIndexBySortColumnId[static_cast<int>(
             TrackModel::SortColumnId::Position)] =
             fieldIndex(ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_POSITION);
+    m_columnIndexBySortColumnId[static_cast<int>(
+            TrackModel::SortColumnId::PlaylistDateTimeAdded)] =
+            fieldIndex(ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_DATETIMEADDED);
 
     m_sortColumnIdByColumnIndex.clear();
     for (int i = static_cast<int>(TrackModel::SortColumnId::IdMin);
@@ -328,7 +331,8 @@ TrackModel::Capabilities PlaylistTableModel::getCapabilities() const {
             Capability::LoadToDeck |
             Capability::LoadToSampler |
             Capability::LoadToPreviewDeck |
-            Capability::ResetPlayed;
+            Capability::ResetPlayed |
+            Capability::Analyze;
 
     if (m_iPlaylistId !=
             m_pTrackCollectionManager->internalCollection()
@@ -344,7 +348,7 @@ TrackModel::Capabilities PlaylistTableModel::getCapabilities() const {
                     ->getPlaylistDAO()
                     .getHiddenType(m_iPlaylistId)) {
         // Disable track reordering for history playlists
-        caps &= ~(Capability::Reorder | Capability::RemovePlaylist);
+        caps &= ~(Capability::ReceiveDrops | Capability::Reorder | Capability::RemovePlaylist);
     }
     bool locked = m_pTrackCollectionManager->internalCollection()->getPlaylistDAO().isPlaylistLocked(m_iPlaylistId);
     if (locked) {

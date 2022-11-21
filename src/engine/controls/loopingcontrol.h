@@ -98,6 +98,7 @@ class LoopingControl : public EngineControl {
     void slotLoopScale(double scaleFactor);
     void slotLoopDouble(double pressed);
     void slotLoopHalve(double pressed);
+    void slotLoopRemove();
 
   private slots:
     void slotLoopEnabledValueChangeRequest(double enabled);
@@ -120,7 +121,7 @@ class LoopingControl : public EngineControl {
     void setLoopOutToCurrentPosition();
     void clearActiveBeatLoop();
     void updateBeatLoopingControls();
-    bool currentLoopMatchesBeatloopSize();
+    bool currentLoopMatchesBeatloopSize(const LoopInfo& loopInfo) const;
 
     // Given loop in and out points, determine if this is a beatloop of a particular
     // size.
@@ -154,6 +155,7 @@ class LoopingControl : public EngineControl {
     ControlObject* m_pCOLoopScale;
     ControlPushButton* m_pLoopHalveButton;
     ControlPushButton* m_pLoopDoubleButton;
+    ControlPushButton* m_pLoopRemoveButton;
     ControlObject* m_pSlipEnabled;
     RateControl* m_pRateControl;
     ControlObject* m_pPlayButton;
